@@ -1,0 +1,12 @@
+alter table settings add column financing_plans text, add column financing_entity text, add column financing_until date;
+alter table products add column financing bool not null default false;
+drop view products_public;
+create view products_public as select id,kind,name,brand,model,condition,storage,color,battery_pct,description,images,price,currency,price_ars_manual,stock,category_id,financing,created_at from products where published and deleted_at is null;
+grant select on products_public to anon, authenticated;
+alter table profiles add column email text;
+alter table repairs add column labor numeric, add column parts_charge numeric, add column other_charges numeric, add column discount numeric, add column quote_status text not null default 'pending' check(quote_status in('pending','accepted','rejected'));
+create table repair_payments(id uuid primary key default gen_random_uuid(), repair_id uuid references repairs on delete cascade, amount numeric not null check(amount>0), method text not null default 'efectivo', user_id uuid default auth.uid(), created_at timestamptz default now());
+create table cash_movements(id uuid primary key default gen_random_uuid(), type text not null check(type in('ingreso','gasto','retiro')), amount numeric not null check(amount>0), reason text not null, user_id uuid default auth.uid(), created_at timestamptz default now());
+alter table repair_payments enable row level security; alter table cash_movements enable row level security;
+create policy staff_all on repair_payments for all using(is_staff()) with check(is_staff());
+create policy staff_all on cash_movements for all using(is_staff()) with check(is_staff());
